@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>gis图层显示</title>
+    <!-- 引入css文件 -->
+    <link href="bundle.css" rel="stylesheet" />
+    <!-- 引入js文件 -->
+    <script src="bundle.js"></script>
+    <style>
+        #menu {
+            background: #fff;
+            position: absolute;
+            z-index: 1;
+            top: 10px;
+            right: 10px;
+            border-radius: 3px;
+            width: 120px;
+            border: 1px solid rgba(0, 0, 0, 0.4);
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        #menu a {
+            font-size: 13px;
+            color: #404040;
+            display: block;
+            margin: 0;
+            padding: 0;
+            padding: 10px;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.25);
+            text-align: center;
+        }
+
+        #menu a:last-child {
+            border: none;
+        }
+
+        #menu a:hover {
+            background-color: #f8f8f8;
+            color: #404040;
+        }
+
+        #menu a.active {
+            background-color: #3887be;
+            color: #ffffff;
+        }
+
+        #menu a.active:hover {
+            background: #3074a4;
+        }
+
+        #tab {
+            text-align: left;
+            width: 200px;
+            height: 300px;
+            position: absolute;
+            z-index: 999;
+            top: 0;
+            left: 0;
+            border: 1px solid #666;
+            border-radius: 5px;
+            display: none;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        #tab .header {
+            text-align: left;
+            line-height: 30px;
+            height: 30px;
+            padding: 5px;
+        }
+
+        #tab .header a {
+            display: block;
+            float: right;
+            line-height: 30px;
+            height: 30px;
+            width: 35px;
+            text-align: center;
+        }
+
+        #tab #tab_content {
+            height: 270px;
+            padding: 5px;
+            overflow-y: auto;
+        }
+
+        .tip-container {
+            position: absolute;
+            z-index: 998;
+            left: 0;
+            top: 0;
+            display: none;
+        }
+
+        .tip {
+            width: 100px;
+            height: 50px;
+            border-radius: 7px;
+            /*圆角弧度为7px*/
+            position: relative;
+            color: #fff;
+        }
+
+        .tip::before {
+            /*content: '';*/
+            /*width: 0;*/
+            /*height: 0;*/
+            /*border: 20px solid;*/
+            /*position: absolute;*/
+            /*bottom: -40px;*/
+            /*left: 30px;*/
+            /*border-color: rgba(0,128,0,0.5) transparent transparent;*/
+        }
+
+        .tip::after {
+            content: '';
+            width: 0;
+            height: 0;
+            border: 20px solid;
+            position: absolute;
+            bottom: -42px;
+            left: 30px;
+        }
+
+        .marker_current {
+            -moz-transform: rotate(90deg);
+            -webkit-transform: rotate(90deg);
+            transform: rotate(90deg);
+            filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=1);
+        }
+
+        .start {
+            background: rgba(0, 128, 0, 0.5);
+            border: 2px solid rgba(0, 128, 0, 0.5);
+            border-color: rgba(0, 128, 0, 0.5) transparent transparent;
+        }
+
+        .start:after {
+            border-color: rgba(0, 128, 0, 0.5) transparent transparent;
+        }
+
+        .end {
+            background: rgba(255, 0, 0, 0.5);
+            border: 2px solid rgba(255, 0, 0, 0.5);
+            border-color: rgba(255, 0, 0, 0.5) transparent transparent;
+        }
+
+        .end:after {
+            border-color: rgba(255, 0, 0, 0.5) transparent transparent;
+        }
+    </style>
+</head>
+
+<body>
+    <nav id="menu"></nav>
+    <div id="map" style='width: 1440px; height: 700px;'></div>
+    <div>
+        <div>点击线路会展示弹框+路线等级切换</div>
+        <div>矢量图和卫星图都要支持路线点击</div>
+        <div>只有卫星图做路线等级切换操作</div>
+        <div id="tab" style="";>
+            <div class="header">路线详情 <a href="javascript:void(0);" onclick="hide_detail()">关闭</a></div>
+            <div id="tab_content"></div>
+        </div>
+    </div>
+
+    
+    <script type="application/javascript">
+        // 配置地图ID，地图接口地址
+       var vectorMap = new creeper.VectorMap('map', 2, "http://222.212.94.74/cmgis-server/");
+        vectorMap.on('load', function () {
+            vectorMap.setZoom('3');
+            //国道线路图层
+            vectorMap.addLayer({
+                "id": "road_G",
+                "type": "line",
+                "source": {
+                    "type": "vector",
+                    "tiles": ["http://222.212.94.74/cmgis-server/map/v3/data/mvt/outdoor/1/{z}/{x}/{y}.mvt"]
+                    // "minzoom": 6,
+                    // "maxzoom": 14
+                },
+                "source-layer": "cmgis",
+                "filter": [
+                    "==",
+                    "highway",
+                    "motorway"
+                ],
+                "layout": {
+                    "line-cap": "round",
+                    "line-join": "round",
+                    'visibility': 'none'
+                },
+                "paint": {
+                    "line-opacity": 1,
+                    "line-color": "#FCD24C",
+                    'line-width': [
+                        "interpolate",
+                        ["linear"],
+                        ["zoom"],
+                        6, 2,
+                        7, 2,
+                        8, 3,
+                        9, 4,
+                        10, 5,
+                        11, 6,
+                        12, 7,
+                        13, 8,
+                        14, 9,
+                        15, 10,
+                        16, 11,
+                        17, 12,
+                        18, 13,
+                        19, 14,
+                        20, 15,
+                        21, 16,
+                        22, 17
+                    ], // 线宽度
+                }
+            });
+            //国道编号图层
+            vectorMap.addLayer({
+                "id": "road_Glabel",
+                "type": "symbol",
+                "layout": {
+                    "text-padding": 20,
+
+                    "icon-image": "lx1",//每个类型的图片颜色
+                    "text-field": "{路线编号}",
+                    "icon-text-fit": "both",
+                    'visibility': 'none'
+
+
+                },
+
+
+                "paint": {
+                    "text-color": "#fff",
+                    "text-halo-color": "hsla(0, 0%, 100%, 0.95)",
+                    //"text-halo-blur": 0.1,
+                    //"text-halo-width": 1
+                },
+                "source-layer": "cmgis",
+                //"source":"outdoor",
+                "source": {
+                    "type": "vector",
+                    "tiles": ["http://222.212.94.74/cmgis-server/map/v3/data/mvt/outdoor/1/{z}/{x}/{y}.mvt"],
+                    "minzoom": 6,
+                    //"maxzoom": 18
+                },
+                "filter": [
+                    "==",
+                    "highway",
+                    "motorway"
+                ]
+
+            });
+            //路线点击事件
+            clicked_road_line_id = '';//当前已经点击的路线
+            clicked_road_line_source = '';//当前已经点击的路线数据源
+            vectorMap.on('click', function (e) {
+                debugger;
+                console.log(e)
+                var features = vectorMap.queryRenderedFeatures(e.point);
+                //这里只是显示点击后的路线，由于路线是分段的，所以显示不完，如果需要显示完全，可能需要根据该线路某属性去查整条路的geojson数据源，然后再加载
+
+                if (features.length > 0) {
+                    console.log(features);
+                    var feature = features[0];
+                    //移除已存在的路线画线图层
+                    if(clicked_road_line_id && clicked_road_line_source)
+                    {
+                        vectorMap.removeLayer(clicked_road_line_id);
+                        vectorMap.removeSource(clicked_road_line_source);
+                        clicked_road_line_id = '';
+                        clicked_road_line_source = '';
+                        hide_detail()
+                    }
+                    if(JSON.stringify(feature.properties) != "{}")
+                    {
+                        //console.log(feature.properties);
+                        var geoJson = {
+                            "type": "FeatureCollection",
+                            "features": [{
+                                "type": "Feature",
+                                "geometry": {
+                                    "coordinates": feature.geometry.coordinates,
+                                    "type": "LineString"
+                                }
+                            }]
+                        };
+
+                        vectorMap.addSource(feature.properties.OBJECTID.toString(), {
+                            type: 'geojson',
+                            data: geoJson
+                        });
+                        vectorMap.addLayer({
+                            type: 'line',
+                            source: feature.properties.OBJECTID.toString(),
+                            id: feature.properties.OBJECTID.toString(),
+                            paint: {
+                                'line-color': 'red',
+                                'line-width': 3
+                            },
+                            layout: {
+                                'line-cap': 'round',
+                                'line-join': 'round'
+                            }
+                        });
+                        //显示弹框
+                        var html = '';
+                        for (let i in feature.properties)
+                        {
+                            html += "<p>"+i+":"+feature.properties[''+i+'']+"</p>"
+                        }
+                        show_detail(e,html);
+
+                        clicked_road_line_id = feature.properties.OBJECTID.toString();
+                        clicked_road_line_source = feature.properties.OBJECTID.toString();
+                    }
+
+                }
+            })
+        });
+        var toggleableLayerIds = {"road_G":"国道","road_S":"省道","road_D":"城市道路","road_X":"县道","road_Z":"专用公路"}
+        for(let i in toggleableLayerIds) {
+            var id = i;
+            var text = toggleableLayerIds[i];
+
+            var link = document.createElement('a');
+            link.href = '#';
+            link.className = '';
+            link.textContent = text;
+            link.id = id;
+
+            link.onclick = function (e) {
+                debugger;
+                var clickedLayer = this.id;
+                e.preventDefault();
+                e.stopPropagation();
+
+                var visibility = vectorMap.getLayoutProperty(clickedLayer, 'visibility');
+
+                if (visibility === 'visible') {
+                    //增加一个标签图层的判断
+                    if (clickedLayer == "road_G") {
+                        vectorMap.setLayoutProperty("road_Glabel", "visibility", "none")
+                    } else if (clickedLayer == "road_S") {
+                        vectorMap.setLayoutProperty("road_Slabel", "visibility", "none")
+                    }else if(clickedLayer == "road_D"){
+                        vectorMap.setLayoutProperty("road_Dlabel", "visibility", "none")
+                    }else if(clickedLayer == "road_X"){
+                        vectorMap.setLayoutProperty("road_Xlabel", "visibility", "none")
+
+                    }else{
+                        debugger;
+                        vectorMap.setLayoutProperty("road_Zlabel", "visibility", "none")
+
+                    }
+                    vectorMap.setLayoutProperty(clickedLayer, 'visibility', 'none');
+                    this.className = '';
+                } else {
+                    this.className = 'active';
+                    vectorMap.setLayoutProperty(clickedLayer, 'visibility', 'visible');
+                    if (clickedLayer == "road_G") {
+                        vectorMap.setLayoutProperty("road_Glabel", "visibility", "visible")
+                    } else if (clickedLayer == "road_S") {
+                        vectorMap.setLayoutProperty("road_Slabel", "visibility", "visible")
+                    }else if(clickedLayer == "road_D"){
+                        vectorMap.setLayoutProperty("road_Dlabel", "visibility", "visible")
+                    }else if(clickedLayer == "road_X"){
+                        vectorMap.setLayoutProperty("road_Xlabel", "visibility", "visible")
+
+                    }else{
+                        vectorMap.setLayoutProperty("road_Zlabel", "visibility", "visible")
+
+                    }
+                }
+            };
+
+            var layers = document.getElementById('menu');
+            layers.appendChild(link);
+        }
+        //显示弹框
+        var marker = undefined;
+        function show_detail(obj,html)
+        {
+            //添加弹框
+            var tab = document.getElementById('tab');
+            var tab_content = document.getElementById('tab_content');
+            //
+            tab.style.display = "block";
+
+            tab_content.innerHTML= html;
+            //打标记
+            if (marker !== undefined) {
+                marker.remove();
+            }
+            marker = new creeper.Marker({"element":tab,"anchor":"bottom-left","offest":[100,200]})
+                .setLngLat([obj.lngLat.lng,obj.lngLat.lat])
+                .addTo(vectorMap);
+        }
+        //隐藏弹框
+        function hide_detail()
+        {
+            //删除弹框
+            var tab = document.getElementById('tab');
+            tab.style.display = "none";
+        }
+    </script>
+</body>
+
+</html>

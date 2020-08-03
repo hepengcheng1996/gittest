@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>gis图层显示</title>
+    <!-- 引入css文件 -->
+    <link href="bundle.css" rel="stylesheet" />
+    <!-- 引入js文件 -->
+    <script src="bundle.js"></script>
+    
+</head>
+
+<body>
+    <div id="map" style='width: 1440px; height: 700px;'></div>
+    
+    <script type="application/javascript">
+        // 配置地图ID，地图接口地址
+       var vectorMap = new creeper.VectorMap('map', 1, "http://222.212.94.74/cmgis-server/");
+       vectorMap.on('load',function(){
+        vectorMap.setZoom('3');
+        vectorMap.setPitch('0');
+       });
+        
+    </script>
+</body>
+
+</html>
